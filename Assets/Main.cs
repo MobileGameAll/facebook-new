@@ -9,6 +9,12 @@ public class Main : MonoBehaviour {
 
 	private int score = 0;
 
+	private string name;
+
+	private string facebook_id;
+
+	private string email;
+
 	// Use this for initialization
 	void Start () {
 		
@@ -60,24 +66,30 @@ public class Main : MonoBehaviour {
 
 	private void AuthCallback (ILoginResult result) {
 		if (FB.IsLoggedIn) {
-			// AccessToken class will have session details
-			var aToken = Facebook.Unity.AccessToken.CurrentAccessToken;
-			this.aToken = aToken;
-			// Print current access token's User ID
-			Debug.Log(aToken.UserId);
-			// Print current access token's granted permissions
-			foreach (string perm in aToken.Permissions) {
-				Debug.Log(perm);
-			}
-			getScores();
+			FB.API("/me?fields=id,name,email", HttpMethod.GET, LoginCallback);
+//			getScores();
 		} else {
 			Debug.Log("User cancelled login");
 		}
 	}
 
+	private void LoginCallback(IGraphResult result){
+		name = result.ResultDictionary["name"].ToString();
+		facebook_id = result.ResultDictionary["id"].ToString();
+		email = result.ResultDictionary["email"].ToString();
+
+	}
+
 	private void saveScore(){
-		var scoreData =  new Dictionary<string, string>() {{"score", score.ToString()}};
-		FB.API("/me/scores", HttpMethod.POST, ScoreCallBack, scoreData);
+		HttpUtils httpUtils = new HttpUtils();
+        string url = "http://openmultiplayer.com/mobileserver/message/XYZ-ABC-123/ranking";
+		Ranking rank = new Ranking();
+		rank.facebook_id = facebook_id;
+		rank.name = name;
+		rank.email = email;
+		rank.score = score;
+		string json = JsonUtility.ToJson(rank);
+        StartCoroutine(httpUtils.sendHttpDataJson(url, json, null));		
 	}
 
     private void ScoreCallBack(IGraphResult result){
@@ -93,7 +105,7 @@ public class Main : MonoBehaviour {
     }
 
 	void OnGUI() {
-		if (aToken == null) {
+		if (facebook_id == null) {
 			if (GUI.Button(new Rect(10, 10, 500, 500), "Login")){
 				loginFacebook();
 			}
